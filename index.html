@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elden Ring & DLC Ultimate Death Tracker</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#cba153">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Cormorant+Garamond:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered!'))
+            .catch(err => console.log('Service Worker error:', err));
+        });
+      }
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #050505;
+            --card-bg: #121212;
+            --primary: #d4af37; /* True Elden Ring Gold */
+            --danger: #8b0000; /* Darker, blood red */
+            --danger-light: #ff3333;
+            --text-main: #d3d3d3;
+            --text-muted: #666;
+            --border-glow: rgba(212, 175, 55, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Cormorant Garamond', serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 0%, #1a1a1a 0%, #050505 70%);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-bottom: 80px;
+            min-height: 100vh;
+        }
+
+        h1, h2, h3, summary {
+            font-family: 'Cinzel', serif;
+        }
+
+        /* Fixed Total Death Count Area */
+        .total-container {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgba(5, 5, 5, 0.95);
+            width: 100%;
+            text-align: center;
+            padding: 20px 10px;
+            border-bottom: 2px solid var(--primary);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.9);
+            backdrop-filter: blur(8px);
+        }
+
+        .total-container h1 {
+            font-size: 20px;
+            color: var(--primary);
+            letter-spacing: 3px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 15px var(--border-glow);
+        }
+
+        #total-deaths {
+            font-size: 54px;
+            font-weight: bold;
+            color: var(--danger-light);
+            text-shadow: 0 0 15px rgba(139, 0, 0, 0.8);
+            font-family: 'Cinzel', serif;
+        }
+
+        .content {
+            width: 100%;
+            max-width: 900px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        /* Top Action Bar: Search & Add Custom */
+        .top-actions {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        #search-input {
+            flex-grow: 1;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-family: 'Cormorant Garamond', serif;
+            background-color: rgba(18, 18, 18, 0.8);
+            border: 1px solid #333;
+            color: white;
+            border-radius: 4px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        #search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--border-glow);
+        }
+
+        .btn-add-custom {
+            background: linear-gradient(135deg, #2a2a2a, #111);
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            padding: 0 25px;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn-add-custom:hover {
+            background: linear-gradient(135deg, #333, #1a1a1a);
+            box-shadow: 0 0 15px var(--border-glow);
+        }
+
+        /* Open World Card */
+        .open-world-card {
+            background: linear-gradient(to right, #1a1a1a, #0d0d0d);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            padding: 20px 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        
+        .open-world-card h2 {
+            color: var(--primary);
+            font-size: 24px;
+            letter-spacing: 1px;
+        }
+
+        /* Accordions */
+        details {
+            background-color: var(--card-bg);
+            margin-bottom: 12px;
+            border-radius: 4px;
+            border: 1px solid #222;
+            transition: border-color 0.3s;
+        }
+
+        details:hover {
+            border-color: #444;
+        }
+
+        summary {
+            padding: 18px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            background: linear-gradient(to right, #151515, #0a0a0a);
+            color: var(--primary);
+            cursor: pointer;
+            list-style: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            letter-spacing: 1px;
+        }
+
+        summary::-webkit-details-marker { display: none; }
+        
+        .boss-list {
+            padding: 10px 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background-color: #0d0d0d;
+        }
+
+        .boss-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background-color: #141414;
+            border-radius: 4px;
+            border-left: 2px solid #333;
+            transition: all 0.2s;
+        }
+
+        .boss-row:hover { 
+            border-left-color: var(--primary); 
+            background-color: #1a1a1a;
+        }
+
+        .boss-name { 
+            font-size: 19px; 
+            flex-grow: 1; 
+            font-weight: 600;
+        }
+
+        .boss-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .death-count {
+            font-size: 26px;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            color: var(--danger-light);
+            min-width: 45px;
+            text-align: center;
+            text-shadow: 0 0 8px rgba(255, 51, 51, 0.3);
+        }
+
+        button.btn-count {
+            background-color: #222;
+            color: #aaa;
+            border: 1px solid #333;
+            border-radius: 4px;
+            width: 38px;
+            height: 38px;
+            font-size: 22px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        button.btn-count:hover { 
+            background-color: #333; 
+            color: white;
+            border-color: var(--primary);
+        }
+        button.btn-count:active { transform: scale(0.9); }
+        .btn-plus { color: var(--danger-light) !important; }
+
+        /* Custom Boss Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(4px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            border: 1px solid var(--primary);
+            padding: 30px;
+            border-radius: 4px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 0 30px var(--border-glow);
+        }
+
+        .modal-box h3 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+
+        .modal-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #0a0a0a;
+            border: 1px solid #444;
+            color: white;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 18px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 10px;
+            font-family: 'Cinzel', serif;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 2px;
+        }
+
+        .btn-cancel { background: #333; color: white; }
+        .btn-confirm { background: var(--danger); color: white; }
+
+        /* Social Branding (Bottom Right) */
+        .branding {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 50;
+        }
+
+        .brand-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid #333;
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+            text-decoration: none;
+            color: var(--text-muted);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .brand-item:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--border-glow);
+        }
+
+        .brand-item svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+    </style>
+</head>
+<body>
+
+    <div class="total-container">
+        <h1>Total Death Count</h1>
+        <div id="total-deaths">0</div>
+    </div>
+
+    <div class="content">
+        
+        <div class="top-actions">
+            <input type="text" id="search-input" placeholder="Search a foe..." onkeyup="searchBosses()">
+            <button class="btn-add-custom" onclick="openModal()">+ Add Foe</button>
+        </div>
+
+        <div class="open-world-card">
+            <h2>🌍 Open World</h2>
+            <div class="boss-controls">
+                <button class="btn-count" onclick="updateDeath('Open World', -1)">-</button>
+                <div class="death-count" id="count-Open World">0</div>
+                <button class="btn-count btn-plus" onclick="updateDeath('Open World', 1)">+</button>
+            </div>
+        </div>
+
+        <div id="regions-container"></div>
+    </div>
+
+    <div class="modal-overlay" id="custom-modal">
+        <div class="modal-box">
+            <h3>Forge Custom Foe</h3>
+            <input type="text" id="custom-boss-name" placeholder="Enter boss name...">
+            <div class="modal-buttons">
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn-confirm" onclick="addCustomBoss()">Summon</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="branding">
+        <a href="#" class="brand-item" target="_blank" title="Discord">
+            <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+            turkishsubaru
+        </a>
+        <a href="https://github.com/Rebornizm" class="brand-item" target="_blank" title="GitHub">
+            <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            Rebornizm
+        </a>
+    </div>
+
+    <script>
+        const defaultRawList = [
+            { id: "Open World", name: "Open World", region: "General" },
+            // DLC
+            { name: "Blackgaol Knight", region: "DLC: Gravesite Plain" },
+            { name: "Chief Bloodfiend", region: "DLC: Gravesite Plain" },
+            { name: "Demi-Human Swordmaster Onze", region: "DLC: Gravesite Plain" },
+            { name: "Divine Beast Dancing Lion", region: "DLC: Gravesite Plain" },
+            { name: "Ghostflame Dragon", region: "DLC: Gravesite Plain" },
+            { name: "Rellana, Twin Moon Knight", region: "DLC: Gravesite Plain" },
+            { name: "Red Bear", region: "DLC: Gravesite Plain" },
+            { name: "Black Knight Edredd", region: "DLC: Scadu Altus" },
+            { name: "Black Knight Garrew", region: "DLC: Scadu Altus" },
+            { name: "Count Ymir, Mother of Fingers", region: "DLC: Scadu Altus" },
+            { name: "Curseblade Labirith", region: "DLC: Scadu Altus" },
+            { name: "Death Knight", region: "DLC: Scadu Altus" },
+            { name: "Dryleaf Dane", region: "DLC: Scadu Altus" },
+            { name: "Ghostflame Dragon", region: "DLC: Scadu Altus" },
+            { name: "Golden Hippopotamus", region: "DLC: Scadu Altus" },
+            { name: "Messmer the Impaler", region: "DLC: Scadu Altus" },
+            { name: "Metyr, Mother of Fingers", region: "DLC: Scadu Altus" },
+            { name: "Rakshasa", region: "DLC: Scadu Altus" },
+            { name: "Jori, Elder Inquisitor", region: "DLC: Scadu Altus" },
+            { name: "Ralva the Great Red Bear", region: "DLC: Scadu Altus" },
+            { name: "Tree Sentinel", region: "DLC: Scadu Altus" },
+            { name: "Death Knight", region: "DLC: Rauh Base" },
+            { name: "Rugalea the Great Red Bear", region: "DLC: Rauh Base" },
+            { name: "Dancer of Ranah", region: "DLC: Cerulean Coast" },
+            { name: "Demi-Human Queen Marigga", region: "DLC: Cerulean Coast" },
+            { name: "Ghostflame Dragon", region: "DLC: Cerulean Coast" },
+            { name: "Putrescent Knight", region: "DLC: Cerulean Coast" },
+            { name: "Death Rite Bird", region: "DLC: Charo's Hidden Grave" },
+            { name: "Lamenter", region: "DLC: Charo's Hidden Grave" },
+            { name: "Tibia Mariner", region: "DLC: Charo's Hidden Grave" },
+            { name: "Ancient Dragon-Man", region: "DLC: Jagged Peak" },
+            { name: "Ancient Dragon Senessax", region: "DLC: Jagged Peak" },
+            { name: "Bayle the Dread", region: "DLC: Jagged Peak" },
+            { name: "Jagged Peak Drake", region: "DLC: Jagged Peak" },
+            { name: "Midra, Lord of Frenzied Flame", region: "DLC: Abyssal Woods" },
+            { name: "Fallingstar Beast", region: "DLC: Scaduview" },
+            { name: "Scadutree Avatar", region: "DLC: Scaduview" },
+            { name: "Commander Gaius", region: "DLC: Scaduview" },
+            { name: "Tree Sentinel", region: "DLC: Scaduview" },
+            { name: "Divine Beast Dancing Lion", region: "DLC: Ancient Ruins of Rauh" },
+            { name: "Romina, Saint of the Bud", region: "DLC: Ancient Ruins of Rauh" },
+            { name: "Leda and Allies", region: "DLC: Enir-Ilim" },
+            { name: "Promised Consort Radahn", region: "DLC: Enir-Ilim" },
+            // Main Game
+            { name: "Margit, the Fell Omen", region: "Limgrave" },
+            { name: "Godrick the Grafted", region: "Limgrave" },
+            { name: "Rennala, Queen of the Full Moon", region: "Liurnia of the Lakes" },
+            { name: "Starscourge Radahn", region: "Caelid" },
+            { name: "Rykard, Lord of Blasphemy", region: "Mt. Gelmir" },
+            { name: "Morgott, the Omen King", region: "Leyndell, Royal Capital" },
+            { name: "Fire Giant", region: "Mountaintops of the Giants" },
+            { name: "Maliketh, the Black Blade", region: "Crumbling Farum Azula" },
+            { name: "Malenia, Blade of Miquella", region: "Miquella's Haligtree" },
+            { name: "Mohg, Lord of Blood", region: "Siofra River" },
+            { name: "Godfrey, First Elden Lord", region: "Leyndell, Ashen Capital" },
+            { name: "Radagon / Elden Beast", region: "Leyndell, Ashen Capital" }
+        ];
+
+        let savedData = JSON.parse(localStorage.getItem('eldenRingDeathsV3')) || 
+                        JSON.parse(localStorage.getItem('eldenRingDeathsV2')) || [];
+        
+        let bossData = [];
+
+        if (savedData.length > 0) {
+            bossData = [...savedData];
+        } else {
+            bossData = defaultRawList.map((boss, i) => {
+                if(boss.id) return { ...boss, deaths: 0 };
+                return { id: "b" + i, name: boss.name, region: boss.region, deaths: 0 };
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('eldenRingDeathsV3', JSON.stringify(bossData));
+        }
+
+        const regionsContainer = document.getElementById('regions-container');
+        const totalDeathsEl = document.getElementById('total-deaths');
+
+        function updateTotal() {
+            const total = bossData.reduce((sum, boss) => sum + boss.deaths, 0);
+            totalDeathsEl.innerText = total;
+        }
+
+        function renderInterface() {
+            updateTotal();
+            
+            const openWorldData = bossData.find(b => b.id === 'Open World');
+            if(openWorldData) {
+                document.getElementById('count-Open World').innerText = openWorldData.deaths;
+            }
+
+            const grouped = {};
+            bossData.filter(b => b.id !== 'Open World').forEach(boss => {
+                if (!grouped[boss.region]) grouped[boss.region] = [];
+                grouped[boss.region].push(boss);
+            });
+
+            regionsContainer.innerHTML = '';
+            
+            const regions = Object.keys(grouped).sort((a, b) => a === "Custom Foes" ? -1 : 1);
+
+            for (const region of regions) {
+                const details = document.createElement('details');
+                details.className = "region-details";
+                
+                if(region === "Custom Foes") details.open = true;
+
+                const summary = document.createElement('summary');
+                const regionTotal = grouped[region].reduce((s, b) => s + b.deaths, 0);
+                const safeRegionId = `reg-total-${region.replace(/[^a-zA-Z0-9]/g, '')}`;
+                
+                summary.innerHTML = `<span>${region}</span> <span style="color:var(--danger-light); font-size:16px;">(Deaths: <span id="${safeRegionId}">${regionTotal}</span>)</span>`;
+                
+                const bossList = document.createElement('div');
+                bossList.className = 'boss-list';
+
+                grouped[region].forEach(boss => {
+                    const row = document.createElement('div');
+                    row.className = 'boss-row';
+                    row.innerHTML = `
+                        <div class="boss-name">${boss.name}</div>
+                        <div class="boss-controls">
+                            <button class="btn-count" onclick="updateDeath('${boss.id}', -1)">-</button>
+                            <div class="death-count" id="count-${boss.id}">${boss.deaths}</div>
+                            <button class="btn-count btn-plus" onclick="updateDeath('${boss.id}', 1)">+</button>
+                        </div>
+                    `;
+                    bossList.appendChild(row);
+                });
+
+                details.appendChild(summary);
+                details.appendChild(bossList);
+                regionsContainer.appendChild(details);
+            }
+        }
+
+        window.updateDeath = function(id, change) {
+            const bossIndex = bossData.findIndex(b => b.id === id);
+            if (bossIndex > -1) {
+                if (bossData[bossIndex].deaths + change >= 0) {
+                    bossData[bossIndex].deaths += change;
+                    saveData();
+                    
+                    document.getElementById(`count-${id}`).innerText = bossData[bossIndex].deaths;
+                    updateTotal();
+                    
+                    if(id !== 'Open World') {
+                        const region = bossData[bossIndex].region;
+                        const safeRegionId = `reg-total-${region.replace(/[^a-zA-Z0-9]/g, '')}`;
+                        const regionTotalEl = document.getElementById(safeRegionId);
+                        if(regionTotalEl) {
+                            const regionTotal = bossData.filter(b => b.region === region).reduce((s, b) => s + b.deaths, 0);
+                            regionTotalEl.innerText = regionTotal;
+                        }
+                    }
+                }
+            }
+        }
+
+        window.searchBosses = function() {
+            const input = document.getElementById('search-input').value.toLowerCase();
+            const detailsElements = document.querySelectorAll('.region-details');
+
+            detailsElements.forEach(details => {
+                let hasVisibleBoss = false;
+                const rows = details.querySelectorAll('.boss-row');
+
+                rows.forEach(row => {
+                    const bossName = row.querySelector('.boss-name').innerText.toLowerCase();
+                    if (bossName.includes(input)) {
+                        row.style.display = 'flex';
+                        hasVisibleBoss = true;
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+
+                if (hasVisibleBoss) {
+                    details.style.display = 'block';
+                    if (input.trim() !== "") details.open = true; 
+                } else {
+                    details.style.display = 'none';
+                }
+            });
+        }
+
+        window.openModal = function() {
+            document.getElementById('custom-modal').style.display = 'flex';
+            document.getElementById('custom-boss-name').focus();
+        }
+
+        window.closeModal = function() {
+            document.getElementById('custom-modal').style.display = 'none';
+            document.getElementById('custom-boss-name').value = '';
+        }
+
+        window.addCustomBoss = function() {
+            const nameInput = document.getElementById('custom-boss-name').value.trim();
+            if (nameInput === "") return;
+
+            const newBoss = {
+                id: "custom_" + Date.now(),
+                name: nameInput,
+                region: "Custom Foes",
+                deaths: 0
+            };
+
+            bossData.push(newBoss);
+            saveData();
+            closeModal();
+            renderInterface();
+
+            document.getElementById('search-input').value = "";
+            searchBosses();
+        }
+
+        renderInterface();
+    </script>
+</body>
+</html>

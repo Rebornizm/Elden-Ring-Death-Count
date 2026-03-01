@@ -1,0 +1,21 @@
+{
+  "name": "Elden Ring Death Tracker",
+  "short_name": "ER Tracker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d0d0d",
+  "theme_color": "#cba153",
+  "description": "Elden Ring ve DLC bossları için sınırsız ölüm sayacı.",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
